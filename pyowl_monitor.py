@@ -6,28 +6,52 @@ import struct
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-# Reference: https://pymotw.com/3/socket/multicast.html
-multicast_group = '224.192.32.19'
-server_address = ('', 22600)
-
-# Create the socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-# Bind to the server address
-sock.bind(server_address)
-
-# Tell the operating system to add the socket to
-# the multicast group on all interfaces.
-group = socket.inet_aton(multicast_group)
-mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-
 class OwlMonitor(object):
-    def __init__(self):
+    def __init__(self, beingOnStartup = True):
         self.isMonitoring = False
         self.currentReadings = {"time": 0, "consuming": -1, "exporting": 0, "generating": -1}
         self.dayReadings = {"consumed": -1, "exported":-1, "generated": -1}
-        self.startMonitoring()
+        self.sock = None
+        self.setupServer()
+        if (beingOnStartup):
+            self.startMonitoring()
+        
+    def setupServer(self):
+
+        # Create the socket
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+        # Reference: https://pymotw.com/3/socket/multicast.html
+        multicast_group = '224.192.32.19'
+        server_address = ('', 22600)
+        
+        # Bind to the server address
+        self.sock.bind(server_address)
+
+        # Tell the operating system to add the socket to
+        # the multicast group on all interfaces.
+        group = socket.inet_aton(multicast_group)
+        mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+    def consumingString(self):
+        consumingString = "Consuming: "
+        consuming = int(float(self.currentReadings["consuming"]))
+        consumingString +=  str(consuming)+"W" if (consuming > -1) else "???W"
+        return consumingString 
+
+    def generatingString(self):
+        generatingString = "Generating: "
+        generating = int(float(self.currentReadings["generating"]))
+        generatingString += str(generating)+"W" if (generating > -1) else "???W"
+        return generatingString 
+
+    def exportingString(self):
+        exportingString = "Exporting: "
+        exporting = int(float(self.currentReadings["exporting"]))
+        exportingString += str(exporting)+"W" if (exporting > -1) else "???W"
+        return exportingString 
+
 
     def printStatus(self):
         # Current
@@ -57,7 +81,7 @@ class OwlMonitor(object):
 
         print('\nOwl monitoring began at: %s' % (datetime.now()))
         while self.isMonitoring:
-            data, address = sock.recvfrom(1024)
+            data, address = self.sock.recvfrom(1024)
 
             xml_root = ET.fromstring(data)
 
@@ -125,4 +149,5 @@ class OwlMonitor(object):
 
             self.printStatus()
 
-owlMonitor = OwlMonitor()       
+if __name__ == "__main__":
+    owlMonitor = OwlMonitor()      

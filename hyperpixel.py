@@ -9,6 +9,7 @@ from core import isMac
 
 if not isMac():
     from hyperpixel2r import Touch
+    import pigpio
 
 """
 HyperPixel 2 Base Screen Object
@@ -34,6 +35,7 @@ class Hyperpixel2r:
         self._draw_bounds = bordered
         self._debug = debug
         self._desiredFPS = fps
+        self.gpio = pigpio.pi()
 
         self._running = False
         self._origin = pygame.math.Vector2(*self.center)
@@ -46,6 +48,10 @@ class Hyperpixel2r:
         # Draw a White Circle Outline to indicate the edge of the display
         if self._draw_bounds:
           self.draw_bounds()
+          
+    def setBrightness(self, level):
+        # Sets a brightness level (0-255)
+        self.gpio.set_PWM_dutycycle(19, level)
 
     def draw_bounds(self, antiAlias=True):
         """
